@@ -14,36 +14,14 @@ let gameOver = false;
 let score = 0;
 let highScore = 0;
 
-// Bilder
-const playerImg = new Image();
-playerImg.src = 'assets/player.png';
-
-const enemyImg = new Image();
-enemyImg.src = 'assets/enemy.png';
-
-const bossImg = new Image();
-bossImg.src = 'assets/boss.png';
-
-const backgroundImg = new Image();
-backgroundImg.src = 'assets/background.jpg';
-
-const startScreenImg = new Image();
-startScreenImg.src = 'assets/startScreen.jpg';
-
-const gameOverImg = new Image();
-gameOverImg.src = 'assets/gameOver.jpg';
-
-const explosionImg = new Image(); // optional: Explosion
-explosionImg.src = 'assets/explosion.png';
-
+// Boss Sound
 const bossSound = new Audio('assets/bossSound.mp3');
 
 // Spieler
 const player = {
-    x: canvas.width / 2 - 50,
+    x: canvas.width / 2,
     y: canvas.height - 150,
-    width: 100,
-    height: 100,
+    radius: 50,
     speed: 10,
     health: 3
 };
@@ -52,8 +30,8 @@ const player = {
 const enemies = [];
 const enemySpawnInterval = 2000;
 const enemyTypes = [
-    {width: 50, height:50, speed:2, health:1, img: enemyImg},
-    {width: 70, height:70, speed:1.5, health:2, img: enemyImg},
+    {size: 50, speed: 2, health: 1},
+    {size: 70, speed: 1.5, health: 2},
 ];
 
 // Boss
@@ -65,170 +43,164 @@ const bullets = [];
 
 // Steuerung
 let keys = {};
-document.addEventListener('keydown', e => {
-    keys[e.code] = true;
-});
+document.addEventListener('keydown', e => keys[e.code] = true);
 document.addEventListener('keyup', e => {
     keys[e.code] = false;
     if(e.code === 'Space') shoot();
 });
 
-// Bullets
-function shoot() {
+// Schießen
+function shoot(){
     if(!gameStarted || gameOver) return;
-    bullets.push({
-        x: player.x + player.width/2 - 5,
-        y: player.y,
-        width: 10,
-        height: 20,
-        speed: 15,
-        owner: 'player'
-    });
+    bullets.push({x: player.x, y: player.y - player.radius, width:10, height:20, speed:15, owner:'player'});
 }
 
 // Gegner spawnen
-function spawnEnemy() {
+function spawnEnemy(){
     if(!gameStarted || gameOver) return;
     const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-    const x = Math.random() * (canvas.width - type.width);
-    enemies.push({
-        x: x,
-        y: -type.height,
-        width: type.width,
-        height: type.height,
-        speed: type.speed,
-        health: type.health,
-        img: type.img
-    });
+    const x = Math.random() * (canvas.width - type.size) + type.size/2;
+    enemies.push({x:x, y:-type.size, size:type.size, speed:type.speed, health:type.health});
 }
 
-// Boss zufällig spawnen
-function maybeSpawnBoss() {
+// Boss zufällig
+function maybeSpawnBoss(){
     if(!gameStarted || gameOver) return;
-    if(!boss && Math.random() < 0.003) {
-        boss = {
-            x: canvas.width/2 - 100,
-            y: 50,
-            width: 200,
-            height: 200,
-            health: 20,
-            attackSpeed: 3,
-            bullets: []
-        };
+    if(!boss && Math.random()<0.003){
+        boss = {x:canvas.width/2-100, y:50, size:200, health:20, bullets:[]};
     }
 }
 
 // Kollision
 function checkCollision(a,b){
-    return (a.x < b.x + b.width &&
-            a.x + a.width > b.x &&
-            a.y < b.y + b.height &&
-            a.y + a.height > b.y);
+    return (a.x - (a.radius||a.width/2) < b.x + (b.size||b.width)/2 &&
+            a.x + (a.radius||a.width/2) > b.x - (b.size||b.width)/2 &&
+            a.y - (a.radius||a.height/2) < b.y + (b.size||b.height)/2 &&
+            a.y + (a.radius||a.height/2) > b.y - (b.size||b.height)/2);
 }
 
 // Update
-function update() {
+function update(){
     if(!gameStarted || gameOver) return;
 
-    // Spielerbewegung
-    if(keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-    if(keys['ArrowRight'] && player.x + player.width < canvas.width) player.x += player.speed;
-    if(keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-    if(keys['ArrowDown'] && player.y + player.height < canvas.height) player.y += player.speed;
+    // Spieler bewegen
+    if(keys['ArrowLeft'] && player.x - player.radius >0) player.x -= player.speed;
+    if(keys['ArrowRight'] && player.x + player.radius < canvas.width) player.x += player.speed;
+    if(keys['ArrowUp'] && player.y - player.radius >0) player.y -= player.speed;
+    if(keys['ArrowDown'] && player.y + player.radius < canvas.height) player.y += player.speed;
 
     // Bullets bewegen
-    bullets.forEach((b, i) => {
-        if(b.owner === 'player') b.y -= b.speed;
-        else b.y += b.speed;
-
-        if(b.y + b.height < 0 || b.y > canvas.height) bullets.splice(i,1);
+    bullets.forEach((b,i)=>{
+        b.owner==='player'? b.y -= b.speed : b.y += b.speed;
+        if(b.y<0 || b.y>canvas.height) bullets.splice(i,1);
     });
 
     // Gegner bewegen
-    enemies.forEach((e, i) => {
+    enemies.forEach((e,i)=>{
         e.y += e.speed;
-        bullets.forEach((b,j) => {
+        bullets.forEach((b,j)=>{
             if(b.owner==='player' && checkCollision(b,e)){
                 e.health--;
                 bullets.splice(j,1);
-                if(e.health <=0){
+                if(e.health<=0){
                     enemies.splice(i,1);
                     score++;
                     scoreDisplay.textContent = `Score: ${score}`;
                 }
             }
         });
-
         if(checkCollision(player,e)){
             player.health--;
             enemies.splice(i,1);
-            if(player.health <=0) endGame();
+            if(player.health<=0) endGame();
         }
-
-        if(e.y > canvas.height) endGame();
+        if(e.y>canvas.height) endGame();
     });
 
-    // Boss bewegen
+    // Boss
     if(boss){
-        boss.y += 0.3; // langsam
         bossAttackCooldown--;
-        if(bossAttackCooldown <=0){
-            bossAttackCooldown = 120; // Boss schießt alle 2s
-            boss.bullets.push({
-                x: boss.x + boss.width/2 - 5,
-                y: boss.y + boss.height,
-                width: 10,
-                height: 20,
-                speed: 8,
-                owner:'boss'
-            });
+        if(bossAttackCooldown<=0){
+            bossAttackCooldown=120;
+            boss.bullets.push({x:boss.x+boss.size/2, y:boss.y+boss.size, width:10, height:20, speed:8, owner:'boss'});
         }
-
         bullets.forEach((b,j)=>{
             if(b.owner==='player' && checkCollision(b,boss)){
                 boss.health--;
                 bullets.splice(j,1);
-                if(boss.health <=0){
+                if(boss.health<=0){
                     bossSound.play();
                     boss=null;
-                    score += 10;
-                    scoreDisplay.textContent = `Score: ${score}`;
+                    score+=10;
+                    scoreDisplay.textContent=`Score: ${score}`;
                 }
             }
             if(b.owner==='boss' && checkCollision(b,player)){
                 bullets.splice(j,1);
                 player.health--;
-                if(player.health <=0) endGame();
+                if(player.health<=0) endGame();
             }
         });
     }
+
     maybeSpawnBoss();
 }
 
 // Draw
-function draw() {
+function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     if(!gameStarted){
-        ctx.drawImage(startScreenImg, 0,0,canvas.width,canvas.height);
+        ctx.fillStyle='black';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='white';
+        ctx.font='50px Arial';
+        ctx.textAlign='center';
+        ctx.fillText('SPACE SHOOTER',canvas.width/2,canvas.height/2-50);
+        ctx.fillText('Press START',canvas.width/2,canvas.height/2+50);
         return;
     }
+
     if(gameOver){
-        ctx.drawImage(gameOverImg, 0,0,canvas.width,canvas.height);
+        ctx.fillStyle='black';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='red';
+        ctx.font='60px Arial';
+        ctx.textAlign='center';
+        ctx.fillText('GAME OVER',canvas.width/2,canvas.height/2-50);
+        ctx.fillStyle='white';
+        ctx.font='40px Arial';
+        ctx.fillText('Press RESTART',canvas.width/2,canvas.height/2+50);
         return;
     }
 
-    ctx.drawImage(backgroundImg, 0,0,canvas.width,canvas.height);
-    ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+    // Spieler
+    ctx.fillStyle='cyan';
+    ctx.beginPath();
+    ctx.arc(player.x,player.y,player.radius,0,Math.PI*2);
+    ctx.fill();
 
+    // Bullets
     bullets.forEach(b=>{
-        ctx.fillStyle = b.owner==='player'?'yellow':'red';
+        ctx.fillStyle=b.owner==='player'?'yellow':'red';
         ctx.fillRect(b.x,b.y,b.width,b.height);
     });
 
-    enemies.forEach(e=>ctx.drawImage(e.img,e.x,e.y,e.width,e.height));
+    // Gegner als Dreiecke
+    enemies.forEach(e=>{
+        ctx.fillStyle='orange';
+        ctx.beginPath();
+        ctx.moveTo(e.x,e.y);
+        ctx.lineTo(e.x-e.size/2,e.y+e.size);
+        ctx.lineTo(e.x+e.size/2,e.y+e.size);
+        ctx.closePath();
+        ctx.fill();
+    });
+
+    // Boss als Quadrat
     if(boss){
-        ctx.drawImage(bossImg,boss.x,boss.y,boss.width,boss.height);
+        ctx.fillStyle='purple';
+        ctx.fillRect(boss.x,boss.y,boss.size,boss.size);
         boss.bullets.forEach(b=>{
             ctx.fillStyle='red';
             ctx.fillRect(b.x,b.y,b.width,b.height);
@@ -243,7 +215,7 @@ function gameLoop(){
     requestAnimationFrame(gameLoop);
 }
 
-// Start / Restart
+// Start/Restart
 function startGame(){
     gameStarted=true;
     gameOver=false;
@@ -258,7 +230,6 @@ function startGame(){
     scoreDisplay.textContent=`Score: ${score}`;
 }
 
-// Ende
 function endGame(){
     gameOver=true;
     restartButton.style.display='inline';
@@ -268,13 +239,10 @@ function endGame(){
 // Event Listener
 startButton.addEventListener('click',startGame);
 restartButton.addEventListener('click',startGame);
-
-// Gegner spawnen
 setInterval(spawnEnemy,enemySpawnInterval);
 gameLoop();
 
-// Bildschirm anpassen
-window.addEventListener('resize', ()=>{
+window.addEventListener('resize',()=>{
     canvas.width=window.innerWidth;
     canvas.height=window.innerHeight;
 });
