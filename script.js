@@ -20,8 +20,8 @@ const bossSound = new Audio('assets/bossSound.mp3');
 // Spieler
 const player = {
     x: canvas.width / 2,
-    y: canvas.height - 150,
-    radius: 50,
+    y: canvas.height - 100,
+    radius: 30,
     speed: 10,
     health: 3
 };
@@ -29,10 +29,6 @@ const player = {
 // Gegner
 const enemies = [];
 const enemySpawnInterval = 2000;
-const enemyTypes = [
-    {size: 50, speed: 2, health: 1},
-    {size: 70, speed: 1.5, health: 2},
-];
 
 // Boss
 let boss = null;
@@ -52,22 +48,22 @@ document.addEventListener('keyup', e => {
 // Schießen
 function shoot(){
     if(!gameStarted || gameOver) return;
-    bullets.push({x: player.x, y: player.y - player.radius, width:10, height:20, speed:15, owner:'player'});
+    bullets.push({x: player.x - 5, y: player.y - player.radius, width:10, height:20, speed:15, owner:'player'});
 }
 
 // Gegner spawnen
 function spawnEnemy(){
     if(!gameStarted || gameOver) return;
-    const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-    const x = Math.random() * (canvas.width - type.size) + type.size/2;
-    enemies.push({x:x, y:-type.size, size:type.size, speed:type.speed, health:type.health});
+    const size = 40;
+    const x = Math.random() * (canvas.width - size) + size/2;
+    enemies.push({x:x, y:-size, size:size, speed:2, health:1});
 }
 
 // Boss zufällig
 function maybeSpawnBoss(){
     if(!gameStarted || gameOver) return;
     if(!boss && Math.random()<0.003){
-        boss = {x:canvas.width/2-100, y:50, size:200, health:20, bullets:[]};
+        boss = {x:canvas.width/2 - 100, y:50, size:200, health:20, bullets:[]};
     }
 }
 
@@ -122,7 +118,7 @@ function update(){
         bossAttackCooldown--;
         if(bossAttackCooldown<=0){
             bossAttackCooldown=120;
-            boss.bullets.push({x:boss.x+boss.size/2, y:boss.y+boss.size, width:10, height:20, speed:8, owner:'boss'});
+            boss.bullets.push({x:boss.x + boss.size/2 - 5, y:boss.y + boss.size, width:10, height:20, speed:8, owner:'boss'});
         }
         bullets.forEach((b,j)=>{
             if(b.owner==='player' && checkCollision(b,boss)){
@@ -190,14 +186,14 @@ function draw(){
     enemies.forEach(e=>{
         ctx.fillStyle='orange';
         ctx.beginPath();
-        ctx.moveTo(e.x,e.y);
-        ctx.lineTo(e.x-e.size/2,e.y+e.size);
-        ctx.lineTo(e.x+e.size/2,e.y+e.size);
+        ctx.moveTo(e.x, e.y);
+        ctx.lineTo(e.x - e.size/2, e.y + e.size);
+        ctx.lineTo(e.x + e.size/2, e.y + e.size);
         ctx.closePath();
         ctx.fill();
     });
 
-    // Boss als Quadrat
+    // Boss Quadrat
     if(boss){
         ctx.fillStyle='purple';
         ctx.fillRect(boss.x,boss.y,boss.size,boss.size);
@@ -215,7 +211,7 @@ function gameLoop(){
     requestAnimationFrame(gameLoop);
 }
 
-// Start/Restart
+// Start / Restart
 function startGame(){
     gameStarted=true;
     gameOver=false;
